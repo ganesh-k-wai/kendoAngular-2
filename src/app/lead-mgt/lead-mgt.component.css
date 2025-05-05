@@ -1,0 +1,159 @@
+/* .container-fluid {
+  height: 100vh;
+} */
+@use "@progress/kendo-theme-bootstrap/scss/all.scss" as *;
+
+.customer-photo {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-size: 32px 35px;
+  background-position: center center;
+  vertical-align: middle;
+  line-height: 32px;
+  box-shadow: inset 0 0 1px #999, inset 0 0 10px rgba(0, 0, 0, 0.2);
+  margin-left: 5px;
+}
+
+.customer-name {
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 32px;
+  padding-left: 10px;
+}
+
+.red {
+  color: #d9534f;
+}
+
+.text-bold {
+  font-weight: 600;
+}
+.exportExel {
+  color: white !important;
+  background-color: yellowgreen !important;
+  padding: 10px !important;
+  border: none;
+  border-radius: 5px !important;
+}
+/* Remove border for the Kendo Grid toolbar */
+.k-grid-toolbar {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.dropdown-menu {
+  z-index: 1050; /* Ensure it appears above the grid */
+  position: absolute; /* Ensure proper positioning */
+}
+.k-grid {
+  z-index: 1; /* Lower the grid's z-index */
+}
+
+.colorYellowGreen {
+  background-color: yellowgreen !important;
+  color: white !important;
+}
+
+.gridlines {
+  color: yellowgreen !important;
+}
+
+/* Toolbar container */
+.custom-toolbar {
+  margin: 0;
+  padding: 0;
+}
+
+/* Lead Dropdown */
+.lead-dropdown .dropdown-menu {
+  z-index: 1050;
+  position: absolute;
+}
+
+/* Saved Preferences Dropdown */
+.saved-preferences-dropdown .dropdown-menu {
+  z-index: 1050;
+  position: absolute;
+}
+
+kendo-dropdownlist,
+kendo-dropdowntree,
+kendo-multicolumncombobox {
+  width: 210px;
+}
+
+/* Search Box */
+.search-box {
+  flex-grow: 1;
+  margin-left: 8px;
+  margin-right: 8px;
+}
+
+.k-grid-header,
+.k-grid .k-header {
+  background-color: navy;
+  color: rgb(231, 228, 228);
+  font-weight: bold;
+}
+
+/* for checkbox  */
+/* .k-grid-header .k-checkbox,
+.k-grid-header .k-checkbox-label {
+  background-color: white;
+  color: black !important;
+} */
+
+.k-grid-header th.k-header:first-child {
+  background-color: navy;
+  color: white !important;
+  border: white !important;
+}
+
+.toggle-switch {
+  background-color: #002b6f; /* Dark blue background */
+  padding: 4px;
+
+  border-radius: 30px;
+}
+
+.toggle-switch .btn {
+  color: white;
+  border: none;
+  font-weight: bold;
+  padding: 6px 16px;
+}
+
+.toggle-switch .btn-check:checked + .btn {
+  background-color: yellowgreen; /* Green selected background */
+  color: white;
+}
+
+.custom-actions-header {
+  background-color: navy !important; /* Light red background */
+  color: white !important; /* Dark red text */
+  font-weight: bold;
+  text-align: center;
+}
+
+/* ---------------- */
+/* .k-grid tr.k-state-selected > td {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.k-grid tr:hover {
+  cursor: pointer;
+}
+
+.editing-row {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.k-grid input.form-control {
+  width: 100%;
+  height: 100%;
+  border: 1px solid #e0e0e0;
+  padding: 4px 8px;
+  margin: 0;
+} */

@@ -1,0 +1,72 @@
+<!-- status  -->
+<!-- <kendo-grid-column field="is_online" title="Status" [width]="100" [class]="{ 'text-center': true }"
+                    [resizable]="false" filter="boolean" [columnMenu]="true">
+                    <ng-template kendoGridCellTemplate let-dataItem>
+                        @if (dataItem.is_online === true) {
+                        <span class=" text-dark">Online</span>
+                        } @if (dataItem.is_online === false) {
+                        <span class=" text-dark">Offline</span>
+                        }
+                    </ng-template>
+                </kendo-grid-column> -->
+
+
+<!-- <kendo-grid-column field="rating" title="Rating" [width]="200" [resizable]="false" filter="numeric"
+                    [columnMenu]="true">
+                    <ng-template kendoGridCellTemplate let-dataItem let-rowIndex="rowIndex">
+                        <kendo-rating *ngIf="!isRowInEditMode(rowIndex)" [value]="dataItem.rating" [readonly]="true"
+                            precision="half"></kendo-rating>
+
+                        <kendo-rating *ngIf="isRowInEditMode(rowIndex)" [(ngModel)]="dataItem.rating"
+                            precision="half"></kendo-rating>
+                    </ng-template>
+                </kendo-grid-column> -->
+
+<!-- progress bar  -->
+<!-- <kendo-grid-column field="target" title="Engagement" [width]="230" [resizable]="false" filter="numeric"
+                    [columnMenu]="true">
+                    <ng-template kendoGridCellTemplate let-dataItem>
+                        <kendo-sparkline type="bar" [data]="dataItem.target" [tooltip]="{ visible: false }"
+                            [transitions]="true" [seriesDefaults]="{
+                                                    labels: { background: 'none', visible: true, format: '{0}%' }
+                                                }">
+                            <kendo-chart-area [opacity]="0" [width]="200"></kendo-chart-area>
+                            <kendo-chart-value-axis>
+                                <kendo-chart-value-axis-item [min]="0" [max]="130">
+                                </kendo-chart-value-axis-item>
+                            </kendo-chart-value-axis>
+                        </kendo-sparkline>
+                    </ng-template>
+                </kendo-grid-column> -->
+<!-- target Column -->
+<!-- <kendo-grid-column field="target" title="Target" [width]="150">
+                    <ng-template kendoGridCellTemplate let-dataItem let-rowIndex="rowIndex">
+                        <span *ngIf="!isRowInEditMode(rowIndex)">{{ dataItem.target | currency }}</span>
+                        <input *ngIf="isRowInEditMode(rowIndex)" [(ngModel)]="dataItem.target" type="number"
+                            class="form-control" />
+                    </ng-template>
+                </kendo-grid-column> -->
+
+<!-- budget  -->
+<!-- <kendo-grid-column field="budget" title="Budget" [width]="150" [columnMenu]="true">
+                    <ng-template kendoGridCellTemplate let-dataItem let-rowIndex="rowIndex">
+                        <span *ngIf="!isRowInEditMode(rowIndex)">{{ dataItem.budget | currency }}</span>
+                        <input *ngIf="isRowInEditMode(rowIndex)" [(ngModel)]="dataItem.budget" type="number"
+                            class="form-control" />
+                    </ng-template>
+                </kendo-grid-column>
+                <kendo-grid-column field="phone" title="Phone" [width]="150" [columnMenu]="true">
+                    <ng-template kendoGridCellTemplate let-dataItem let-rowIndex="rowIndex">
+                        <span *ngIf="!isRowInEditMode(rowIndex)">{{ dataItem.phone }}</span>
+                        <input *ngIf="isRowInEditMode(rowIndex)" [(ngModel)]="dataItem.phone" type="number"
+                            class="form-control" />
+                    </ng-template>
+                </kendo-grid-column> -->
+<!-- address  -->
+<!-- <kendo-grid-column field="address" title="Address" [width]="200" [columnMenu]="true">
+                    <ng-template kendoGridCellTemplate let-dataItem let-rowIndex="rowIndex">
+                        <span *ngIf="!isRowInEditMode(rowIndex)">{{ dataItem.address }}</span>
+                        <input *ngIf="isRowInEditMode(rowIndex)" [(ngModel)]="dataItem.address" type="text"
+                            class="form-control" />
+                    </ng-template>
+                </kendo-grid-column> -->

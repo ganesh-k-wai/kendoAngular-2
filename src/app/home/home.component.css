@@ -1,0 +1,28 @@
+ul {
+  /* border-bottom: 3px solid yellowgreen; */
+}
+li {
+  background: rgb(12, 12, 150);
+  color: white !important;
+  border: 3px solid white;
+  border-radius: 10px 10px 0px 0px;
+}
+a {
+  color: white !important;
+  font-weight: 500;
+  padding: 10px;
+  padding-bottom: none;
+}
+
+li:hover {
+  background: yellowgreen;
+  color: white !important;
+  border: 3px solid white;
+  border-radius: 10px 10px 0px 0px;
+}
+
+.nav-item.active .nav-link {
+  color: #fff !important;
+  background-color: yellowgreen !important;
+  border-radius: 5px 5px 0px 0px;
+}
