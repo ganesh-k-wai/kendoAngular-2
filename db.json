@@ -447,7 +447,8 @@
       "coordinator": "ooo",
       "sync_to_mobile": false,
       "sales_rep": "ooo",
-      "booking_agency_code": 90
+      "booking_agency_code": 90,
+      "experience": "Below 1 Year"
     },
     {
       "id": "3whjux",
@@ -487,6 +488,75 @@
       "sales_rep": "sdsds",
       "booking_agency_code": 4,
       "experience": "Above 3 Years"
+    },
+    {
+      "id": "5y8i5",
+      "last_name": "sss",
+      "first_name": "sss",
+      "primary_email": "ss@d.c",
+      "primary_phone": "565656",
+      "assigned_date": "2025-05-13",
+      "coordinator": "fsadasd",
+      "sync_to_mobile": true,
+      "sales_rep": "asdasd",
+      "booking_agency_code": 89,
+      "experience": "Above 5 Years"
+    }
+  ],
+  "columnPreferences": [
+    {
+      "id": 1,
+      "name": "Default View",
+      "columns": [
+        "id",
+        "last_name",
+        "first_name",
+        "primary_email",
+        "primary_phone",
+        "assigned_date",
+        "coordinator",
+        "sync_to_mobile",
+        "sales_rep",
+        "booking_agency_code",
+        "experience"
+      ],
+      "createdAt": "2025-05-06T10:00:00.000Z"
+    },
+    {
+      "id": "0ebf",
+      "name": "first Preference",
+      "columns": [
+        "id",
+        "last_name",
+        "first_name",
+        "primary_email",
+        "primary_phone",
+        "assigned_date",
+        "coordinator",
+        "sync_to_mobile",
+        "sales_rep",
+        "booking_agency_code",
+        "experience"
+      ],
+      "createdAt": "2025-05-06T12:03:43.169Z"
+    },
+    {
+      "id": "ce75",
+      "name": "rrr",
+      "columns": [
+        "id",
+        "last_name",
+        "first_name",
+        "primary_email",
+        "primary_phone",
+        "assigned_date",
+        "coordinator",
+        "sync_to_mobile",
+        "sales_rep",
+        "booking_agency_code",
+        "experience"
+      ],
+      "createdAt": "2025-05-06T12:36:44.997Z"
     }
   ]
 }

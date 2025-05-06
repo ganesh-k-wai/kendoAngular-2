@@ -7,6 +7,7 @@ import {
   NO_ERRORS_SCHEMA,
   OnDestroy,
   Renderer2,
+  QueryList,
 } from '@angular/core';
 import { KENDO_CHARTS } from '@progress/kendo-angular-charts';
 import { KENDO_BUTTONS } from '@progress/kendo-angular-buttons';
@@ -23,11 +24,15 @@ import {
   GridComponent,
   GridDataResult,
   PageChangeEvent,
+  ColumnReorderEvent,
+  ColumnBase,
+  ColumnComponent,
   KENDO_GRID,
   KENDO_GRID_EXCEL_EXPORT,
   KENDO_GRID_PDF_EXPORT,
 } from '@progress/kendo-angular-grid';
 import { KENDO_INPUTS } from '@progress/kendo-angular-inputs';
+import { KENDO_DIALOG } from '@progress/kendo-angular-dialog';
 import { process, State, SortDescriptor } from '@progress/kendo-data-query';
 import {
   SVGIcon,
@@ -36,7 +41,7 @@ import {
   gearIcon,
 } from '@progress/kendo-svg-icons';
 import { FormsModule } from '@angular/forms';
-import { EmployeeService } from '../employee-service.service';
+import { EmployeeService, ColumnPreference } from '../employee-service.service';
 import { ChangeDetectorRef } from '@angular/core';
 import { KENDO_LABEL } from '@progress/kendo-angular-label';
 import {
@@ -50,6 +55,19 @@ import { Subscription } from 'rxjs';
 // Helper function to check if an element matches a selector
 const matches = (el: any, selector: string) =>
   (el.matches || el.msMatchesSelector).call(el, selector);
+
+// Type augmentation for ColumnBase to include field property
+declare module '@progress/kendo-angular-grid' {
+  interface ColumnBase {
+    field?: string;
+  }
+
+  interface GridComponent {
+    removeColumn(column: ColumnComponent): void;
+    addColumn(column: ColumnComponent): void;
+    columns: QueryList<ColumnBase>; // Fix the columns property to use QueryList<ColumnBase> instead of any
+  }
+}
 
 export interface Employee {
   id: string;
@@ -87,6 +105,7 @@ export interface Employee {
     IconsModule,
     KENDO_TOOLTIPS,
     DateInputsModule,
+    KENDO_DIALOG,
   ],
   schemas: [NO_ERRORS_SCHEMA],
 })
@@ -126,6 +145,14 @@ export class LeadMgtComponent implements OnInit, OnDestroy {
     'Above 5 Years',
   ];
 
+  // Column preference properties
+  public columnOrder: string[] = [];
+  public defaultColumnOrder: string[] = [];
+  public savedPreferences: ColumnPreference[] = [];
+  public selectedPreferenceId: number | null = null;
+  public showSaveDialog: boolean = false;
+  public newPreferenceName: string = '';
+
   constructor(
     private employeeService: EmployeeService,
     private cdr: ChangeDetectorRef,
@@ -134,6 +161,7 @@ export class LeadMgtComponent implements OnInit, OnDestroy {
 
   public ngOnInit(): void {
     this.loadEmployees();
+    this.loadColumnPreferences();
 
     // Add document click listener for auto-save
     this.docClickSubscription.add(
@@ -396,12 +424,6 @@ export class LeadMgtComponent implements OnInit, OnDestroy {
     // Add logic to filter your grid if needed
   }
 
-  public savedPreferences: Array<{ id: number; text: string }> = [
-    { id: 1, text: 'Default View' },
-    { id: 2, text: 'Custom View 1' },
-    { id: 3, text: 'Custom View 2' },
-  ];
-
   // Selected preference
   public selectedPreference: { id: number; text: string } | null = null;
 
@@ -417,5 +439,267 @@ export class LeadMgtComponent implements OnInit, OnDestroy {
     } else if (preference.id === 3) {
       console.log('Applying Custom View 2...');
     }
+  }
+
+  // Save the initial column order when grid is first rendered
+  public onGridInit(): void {
+    // Wait for grid to initialize
+    setTimeout(() => {
+      if (this.grid) {
+        try {
+          // Get all column fields from the grid
+          this.defaultColumnOrder = this.grid.columns
+            .toArray()
+            .filter((col) => col.field) // Only columns with field property
+            .map((col) => col.field || '');
+
+          // Set current order to default
+          this.columnOrder = [...this.defaultColumnOrder];
+        } catch (error) {
+          console.error('Error initializing column order:', error);
+        }
+      }
+    }, 100);
+  }
+
+  // Track column reordering
+  public onColumnReorder(event: ColumnReorderEvent): void {
+    if (this.grid) {
+      try {
+        console.log('==== COLUMN REORDER EVENT ====');
+        console.log('Column being moved:', event.column.field);
+        console.log('New index:', event.newIndex);
+        console.log('Old index:', event.oldIndex);
+
+        // Important: We need to wait for the reorder to complete before getting the new order
+        setTimeout(() => {
+          // Get all columns after the reordering has completed
+          const allColumns = this.grid.columns.toArray();
+
+          // Extract only field columns (skip checkbox columns etc)
+          const newOrder = allColumns
+            .filter((col) => col.field)
+            .map((col) => col.field || '');
+
+          console.log('New column order from grid:', newOrder);
+
+          // Update our stored order
+          this.columnOrder = [...newOrder];
+
+          console.log('Updated columnOrder:', this.columnOrder);
+        }, 0);
+      } catch (error) {
+        console.error('Error tracking column reorder:', error);
+      }
+    }
+  }
+
+  // Load saved column preferences
+  private loadColumnPreferences(): void {
+    this.employeeService.getColumnPreferences().subscribe(
+      (preferences) => {
+        this.savedPreferences = preferences;
+      },
+      (error) => {
+        console.error('Error loading column preferences:', error);
+      }
+    );
+  }
+
+  // Open save preference dialog
+  public openSavePreferenceDialog(): void {
+    this.showSaveDialog = true;
+    this.newPreferenceName = '';
+  }
+
+  // Close save preference dialog
+  public closeSavePreferenceDialog(): void {
+    this.showSaveDialog = false;
+  }
+
+  // Save current column preference
+  public savePreference(): void {
+    if (!this.newPreferenceName.trim()) {
+      alert('Please enter a name for this preference');
+      return;
+    }
+
+    const preference: ColumnPreference = {
+      name: this.newPreferenceName.trim(),
+      columns: [...this.columnOrder],
+    };
+
+    this.employeeService.saveColumnPreference(preference).subscribe(
+      (saved) => {
+        this.savedPreferences.push(saved);
+        this.showSaveDialog = false;
+        this.selectedPreferenceId = saved.id || null;
+      },
+      (error) => {
+        console.error('Error saving preference:', error);
+        alert('Failed to save preference. Please try again.');
+      }
+    );
+  }
+
+  // Apply a saved preference
+  public applyPreference(preference: ColumnPreference): void {
+    if (!preference || !preference.columns || !preference.columns.length) {
+      return;
+    }
+
+    this.selectedPreferenceId = preference.id || null;
+    this.columnOrder = [...preference.columns];
+
+    // Reorder columns in the grid
+    this.reorderGridColumns();
+  }
+
+  // Delete a saved preference
+  public deletePreference(id: number): void {
+    if (confirm('Are you sure you want to delete this preference?')) {
+      this.employeeService.deleteColumnPreference(id).subscribe(
+        () => {
+          this.savedPreferences = this.savedPreferences.filter(
+            (p) => p.id !== id
+          );
+          if (this.selectedPreferenceId === id) {
+            this.resetToDefaultOrder();
+          }
+        },
+        (error) => {
+          console.error('Error deleting preference:', error);
+          alert('Failed to delete preference. Please try again.');
+        }
+      );
+    }
+  }
+
+  // Reset to default column order
+  public resetToDefaultOrder(): void {
+    this.selectedPreferenceId = null;
+    this.columnOrder = [...this.defaultColumnOrder];
+    this.reorderGridColumns();
+  }
+
+  // Reorder grid columns based on columnOrder array
+  private reorderGridColumns(): void {
+    if (!this.grid || !this.columnOrder.length) {
+      return;
+    }
+
+    try {
+      console.log('Applying column order:', this.columnOrder);
+
+      // Get all current columns including non-field columns like checkbox column
+      const allColumns = this.grid.columns.toArray();
+
+      // Identify special columns (like checkbox columns)
+      const specialColumns = allColumns.filter((col) => !col.field);
+
+      // Create a map of the current columns for easy access by field name
+      const columnMap = new Map<string, any>();
+      allColumns.forEach((col, index) => {
+        if (col.field) {
+          columnMap.set(col.field, { column: col, index });
+        }
+      });
+
+      // We'll move one column at a time to build the desired order
+      // First, calculate the current positions of columns
+      const currentOrder = allColumns
+        .filter((col) => col.field)
+        .map((col) => col.field || '');
+
+      console.log('Current column order:', currentOrder);
+      console.log('Target column order:', this.columnOrder);
+
+      // For each position in the target order, find which column needs to move there
+      for (
+        let targetIndex = 0;
+        targetIndex < this.columnOrder.length;
+        targetIndex++
+      ) {
+        const targetField = this.columnOrder[targetIndex];
+        const actualIndex = currentOrder.indexOf(targetField);
+
+        // Skip if column is already in the right position
+        if (actualIndex === targetIndex) {
+          continue;
+        }
+
+        // Calculate the real index including special columns
+        const realTargetIndex = targetIndex + specialColumns.length;
+        const columnInfo = columnMap.get(targetField);
+
+        if (columnInfo) {
+          console.log(
+            `Moving column ${targetField} to position ${realTargetIndex}`
+          );
+
+          // Use the proper method signature for reorderColumn
+          this.grid.reorderColumn(columnInfo.column, realTargetIndex);
+
+          // Update the current order to reflect the change
+          currentOrder.splice(actualIndex, 1);
+          currentOrder.splice(targetIndex, 0, targetField);
+        }
+      }
+
+      // Force grid refresh
+      this.loadItems();
+
+      // Force change detection in case the UI doesn't update
+      setTimeout(() => {
+        this.cdr.detectChanges();
+      }, 50);
+    } catch (error) {
+      console.error('Error reordering columns:', error);
+    }
+  }
+
+  // Debug function to check current column order
+  public debugColumnOrder(): void {
+    console.log('=== COLUMN ORDER DEBUG ===');
+    console.log('Default column order:', this.defaultColumnOrder);
+    console.log('Current column order:', this.columnOrder);
+
+    // Print actual order from grid
+    if (this.grid) {
+      const actualColumnOrder = this.grid.columns
+        .toArray()
+        .filter((col) => col.field)
+        .map((col) => col.field);
+      console.log('Actual grid column order:', actualColumnOrder);
+    }
+
+    // Force update of columnOrder to match actual grid state
+    if (this.grid) {
+      this.columnOrder = this.grid.columns
+        .toArray()
+        .filter((col) => col.field)
+        .map((col) => col.field || '');
+
+      console.log('Updated column order:', this.columnOrder);
+      alert('Column order logged to console');
+    }
+  }
+
+  // For dropdown display
+  public preferenceText(item: ColumnPreference): string {
+    return item.name;
+  }
+
+  // Update the existing clear filters method or add it if it doesn't exist
+  public clearFilters(): void {
+    // Reset filters
+    this.state.filter = undefined;
+
+    // Reset to default column order
+    this.resetToDefaultOrder();
+
+    // Refresh grid
+    this.loadItems();
+    this.state.skip = 0;
   }
 }

@@ -10,7 +10,8 @@
                 [columnMenu]="{ filter: true }" [editable]="'inline'" kendoGridSelectBy="id"
                 [(selectedKeys)]="mySelection" [selectable]="{ mode: 'multiple', drag: true }"
                 (pageChange)="pageChange($event)" (cellClick)="cellClickHandler($event)" (cancel)="cancelHandler()"
-                (save)="saveRow()" (add)="addHandler()">
+                (save)="saveRow()" (add)="addHandler()" (columnReorder)="onColumnReorder($event)"
+                (dataBound)="onGridInit()">
 
                 <ng-template kendoGridToolbarTemplate>
                     <p class="fw-bolder fs-3 " style="color: yellowgreen;">Lead Management</p>
@@ -44,14 +45,24 @@
                                         </kendo-dropdownlist>
                                     </kendo-label>
                                 </div>
-
                             </div>
                             <!-- Saved Preferences Dropdown -->
                             <div class="dropdown saved-preferences-dropdown">
                                 <kendo-label text="">
                                     <br />
-                                    <kendo-dropdownlist [style.width.px]="250" [style.height.px]="40" [data]="listItems"
-                                        defaultItem="Select Saved Preferences">
+                                    <kendo-dropdownlist [style.width.px]="250" [style.height.px]="40"
+                                        [data]="savedPreferences" [textField]="'name'" [valueField]="'id'"
+                                        [(value)]="selectedPreferenceId" (valueChange)="applyPreference($event)"
+                                        [defaultItem]="{id: null, name: 'Select Saved Preferences', columns: []}">
+                                        <ng-template kendoDropDownListItemTemplate let-dataItem>
+                                            <div class="d-flex justify-content-between align-items-center w-100">
+                                                <span>{{ dataItem.name }}</span>
+                                                <button *ngIf="dataItem.id" class="btn btn-sm btn-danger"
+                                                    (click)="$event.stopPropagation(); deletePreference(dataItem.id)">
+                                                    X
+                                                </button>
+                                            </div>
+                                        </ng-template>
                                     </kendo-dropdownlist>
                                 </kendo-label>
                             </div>
@@ -73,19 +84,28 @@
                             </div>
 
                             <!-- Clear Filters Button -->
-                            <button class="btn btn-md  colorYellowGreen border-0 px-4 mx-1 ">Clear
-                                Filters</button>
+                            <button class="btn btn-md colorYellowGreen border-0 px-4 mx-1" (click)="clearFilters()">
+                                Clear Filters
+                            </button>
 
                             <!-- Bulk Edit Button -->
-                            <button class="btn btn-md  colorYellowGreen border-0 px-4 mx-1 ">Bulk
-                                Edit</button>
+                            <button class="btn btn-md colorYellowGreen border-0 px-4 mx-1">
+                                Bulk Edit
+                            </button>
 
                             <!-- Save Preference Button -->
-                            <button class="btn btn-md  colorYellowGreen border-0 px-4 mx-1 ">Save
-                                Preference</button>
+                            <button class="btn btn-md colorYellowGreen border-0 px-4 mx-1"
+                                (click)="openSavePreferenceDialog()">
+                                Save Preference
+                            </button>
+
+                            <!-- Debug Button - Only for development -->
+                            <button class="btn btn-md btn-info border-0 px-4 mx-1" (click)="debugColumnOrder()">
+                                Debug Order
+                            </button>
 
                             <!-- Gridlines Button -->
-                            <button class="btn btn-md   mx-1 gridlines-btn border">
+                            <button class="btn btn-md mx-1 gridlines-btn border">
                                 <i class="bi bi-list gridlines"></i>
                             </button>
                         </div>
@@ -187,3 +207,23 @@
         </div>
     </div>
 </div>
+
+<!-- Dialog for saving column preferences -->
+<kendo-dialog *ngIf="showSaveDialog" [title]="'Save Column Preference'" [minWidth]="350" [width]="450"
+    (close)="closeSavePreferenceDialog()">
+    <div class="k-dialog-content">
+        <div class="form-group mb-3">
+            <label for="preferenceName" class="form-label">Preference Name:</label>
+            <input type="text" class="form-control" id="preferenceName" [(ngModel)]="newPreferenceName"
+                placeholder="Enter a name for this column arrangement">
+        </div>
+        <div class="alert alert-info">
+            This will save the current column order for future use.
+        </div>
+    </div>
+    <kendo-dialog-actions>
+        <button kendoButton (click)="closeSavePreferenceDialog()">Cancel</button>
+        <button kendoButton themeColor="primary" (click)="savePreference()"
+            [disabled]="!newPreferenceName.trim()">Save</button>
+    </kendo-dialog-actions>
+</kendo-dialog>
