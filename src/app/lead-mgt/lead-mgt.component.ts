@@ -167,6 +167,9 @@ export class LeadMgtComponent implements OnInit, OnDestroy {
     this.docClickSubscription.add(
       this.renderer.listen('document', 'click', this.onDocumentClick.bind(this))
     );
+
+    // Initialize grid after a short delay to ensure it's rendered
+    setTimeout(() => this.onGridInit(), 100);
   }
 
   public ngOnDestroy(): void {
@@ -462,7 +465,7 @@ export class LeadMgtComponent implements OnInit, OnDestroy {
     }, 100);
   }
 
-  // Track column reordering
+  // Track column reordering with DOM-based detection for accuracy
   public onColumnReorder(event: ColumnReorderEvent): void {
     if (this.grid) {
       try {
@@ -471,39 +474,65 @@ export class LeadMgtComponent implements OnInit, OnDestroy {
         console.log('New index:', event.newIndex);
         console.log('Old index:', event.oldIndex);
 
-        // Important: We need to wait for the reorder to complete before getting the new order
+        // Use a longer timeout to ensure DOM has time to fully update
         setTimeout(() => {
-          // Get all columns after the reordering has completed
-          const allColumns = this.grid.columns.toArray();
+          // METHOD 1: Get order directly from DOM (most accurate)
+          const headerCells = document.querySelectorAll(
+            '.k-grid-header th[data-field]'
+          );
 
-          // Extract only field columns (skip checkbox columns etc)
-          const newOrder = allColumns
+          if (headerCells.length > 0) {
+            // Extract field names from the DOM in their current visual order
+            const domOrder: string[] = [];
+            headerCells.forEach((header: Element) => {
+              const field = header.getAttribute('data-field');
+              if (field) {
+                domOrder.push(field);
+              }
+            });
+
+            console.log('DOM-based column order:', domOrder);
+
+            // Only update if we found some columns in the DOM
+            if (domOrder.length > 0) {
+              this.columnOrder = [...domOrder];
+              console.log('Updated columnOrder from DOM:', this.columnOrder);
+              return;
+            }
+          }
+
+          // METHOD 2: Fallback to using the Grid component's columns
+          console.warn(
+            'DOM-based detection failed, falling back to component-based detection'
+          );
+          const allColumns = this.grid.columns.toArray();
+          const componentOrder = allColumns
             .filter((col) => col.field)
             .map((col) => col.field || '');
 
-          console.log('New column order from grid:', newOrder);
-
-          // Update our stored order
-          this.columnOrder = [...newOrder];
-
-          console.log('Updated columnOrder:', this.columnOrder);
-        }, 0);
+          console.log('Component-based column order:', componentOrder);
+          this.columnOrder = [...componentOrder];
+        }, 200); // Longer timeout to ensure DOM is updated
       } catch (error) {
         console.error('Error tracking column reorder:', error);
       }
     }
   }
 
-  // Load saved column preferences
+  // Load saved column preferences from localStorage
   private loadColumnPreferences(): void {
-    this.employeeService.getColumnPreferences().subscribe(
-      (preferences) => {
+    this.employeeService.getColumnPreferences().subscribe({
+      next: (preferences) => {
         this.savedPreferences = preferences;
+        console.log(
+          'Loaded preferences from localStorage:',
+          this.savedPreferences
+        );
       },
-      (error) => {
+      error: (error) => {
         console.error('Error loading column preferences:', error);
-      }
-    );
+      },
+    });
   }
 
   // Open save preference dialog
@@ -524,42 +553,72 @@ export class LeadMgtComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Capture complete grid configuration including column order, widths, and visibility
+    const gridConfig = this.captureGridConfiguration();
+    console.log('Captured grid configuration:', gridConfig);
+
+    // Create enhanced preference with additional grid details
     const preference: ColumnPreference = {
       name: this.newPreferenceName.trim(),
-      columns: [...this.columnOrder],
+      columns: gridConfig.columns,
+      columnWidths: gridConfig.columnWidths,
+      columnVisibility: gridConfig.columnVisibility,
+      columnOrderIndex: gridConfig.columnOrderIndex, // Include explicit order indexes
+      gridState: { ...this.state }, // Include current grid state (sorting, paging, etc.)
     };
 
-    this.employeeService.saveColumnPreference(preference).subscribe(
-      (saved) => {
+    this.employeeService.saveColumnPreference(preference).subscribe({
+      next: (saved) => {
+        console.log('Enhanced preference saved to localStorage:', saved);
         this.savedPreferences.push(saved);
         this.showSaveDialog = false;
         this.selectedPreferenceId = saved.id || null;
       },
-      (error) => {
+      error: (error) => {
         console.error('Error saving preference:', error);
         alert('Failed to save preference. Please try again.');
-      }
-    );
+      },
+    });
   }
 
-  // Apply a saved preference
+  // Apply a saved preference with complete grid configuration
   public applyPreference(preference: ColumnPreference): void {
     if (!preference || !preference.columns || !preference.columns.length) {
       return;
     }
 
+    console.log('Applying preference:', preference);
     this.selectedPreferenceId = preference.id || null;
     this.columnOrder = [...preference.columns];
 
+    // Apply saved grid state if available (sorting, filtering, etc)
+    if (preference.gridState) {
+      // Don't overwrite the entire state as it might have refs to functions
+      // Just copy the serializable parts
+      if (preference.gridState.skip !== undefined)
+        this.state.skip = preference.gridState.skip;
+      if (preference.gridState.take !== undefined)
+        this.state.take = preference.gridState.take;
+      if (preference.gridState.sort)
+        this.state.sort = preference.gridState.sort;
+      if (preference.gridState.group)
+        this.state.group = preference.gridState.group;
+      if (preference.gridState.filter)
+        this.state.filter = preference.gridState.filter;
+
+      console.log('Applied grid state from preference:', this.state);
+    }
+
     // Reorder columns in the grid
-    this.reorderGridColumns();
+    this.reorderGridColumnsWithConfig(preference);
   }
 
   // Delete a saved preference
   public deletePreference(id: number): void {
     if (confirm('Are you sure you want to delete this preference?')) {
-      this.employeeService.deleteColumnPreference(id).subscribe(
-        () => {
+      this.employeeService.deleteColumnPreference(id).subscribe({
+        next: () => {
+          console.log('Deleted preference from localStorage:', id);
           this.savedPreferences = this.savedPreferences.filter(
             (p) => p.id !== id
           );
@@ -567,11 +626,11 @@ export class LeadMgtComponent implements OnInit, OnDestroy {
             this.resetToDefaultOrder();
           }
         },
-        (error) => {
+        error: (error) => {
           console.error('Error deleting preference:', error);
           alert('Failed to delete preference. Please try again.');
-        }
-      );
+        },
+      });
     }
   }
 
@@ -658,6 +717,151 @@ export class LeadMgtComponent implements OnInit, OnDestroy {
     }
   }
 
+  // Reorder grid columns with complete configuration including widths and visibility
+  private reorderGridColumnsWithConfig(preference: ColumnPreference): void {
+    if (!this.grid || !preference.columns || !preference.columns.length) {
+      return;
+    }
+
+    try {
+      console.log(
+        'Applying complete grid configuration from preference:',
+        preference
+      );
+
+      // Get all current columns including special columns like checkbox column
+      const allColumns = this.grid.columns.toArray();
+
+      // Identify special columns (like checkbox columns)
+      const specialColumns = allColumns.filter((col) => !col.field);
+
+      // Create a map of the current columns for easy access by field name
+      const columnMap = new Map<string, any>();
+      allColumns.forEach((col, index) => {
+        if (col.field) {
+          columnMap.set(col.field, { column: col, index });
+        }
+      });
+
+      // Get the current order of columns in the grid
+      const currentOrder = allColumns
+        .filter((col) => col.field)
+        .map((col) => col.field || '');
+
+      console.log('Current column order:', currentOrder);
+      console.log('Target column order from preference:', preference.columns);
+
+      // Step 1: If we have explicit order indexes, sort the columns by those indexes
+      let orderedColumns = [...preference.columns];
+      if (
+        preference.columnOrderIndex &&
+        Object.keys(preference.columnOrderIndex).length > 0
+      ) {
+        console.log(
+          'Using explicit column order indexes:',
+          preference.columnOrderIndex
+        );
+        // Sort columns based on their saved order index
+        orderedColumns.sort((a, b) => {
+          const indexA = preference.columnOrderIndex?.[a] ?? 999;
+          const indexB = preference.columnOrderIndex?.[b] ?? 999;
+          return indexA - indexB;
+        });
+        console.log('Columns ordered by explicit indexes:', orderedColumns);
+      }
+
+      // Step 2: Apply the column order
+      for (
+        let targetIndex = 0;
+        targetIndex < orderedColumns.length;
+        targetIndex++
+      ) {
+        const targetField = orderedColumns[targetIndex];
+        const actualIndex = currentOrder.indexOf(targetField);
+
+        // Skip if column is already in the right position
+        if (actualIndex === targetIndex) {
+          continue;
+        }
+
+        // Calculate the real index including special columns
+        const realTargetIndex = targetIndex + specialColumns.length;
+        const columnInfo = columnMap.get(targetField);
+
+        if (columnInfo) {
+          console.log(
+            `Moving column ${targetField} to position ${realTargetIndex}`
+          );
+
+          // Use the proper method signature for reorderColumn
+          this.grid.reorderColumn(columnInfo.column, realTargetIndex);
+
+          // Update our tracking of the current order
+          currentOrder.splice(actualIndex, 1);
+          currentOrder.splice(targetIndex, 0, targetField);
+        }
+      }
+
+      // Step 3: Apply column widths if available
+      if (
+        preference.columnWidths &&
+        Object.keys(preference.columnWidths).length > 0
+      ) {
+        // Delay slightly to ensure reorder is complete
+        setTimeout(() => {
+          Object.entries(preference.columnWidths!).forEach(([field, width]) => {
+            const columnInfo = columnMap.get(field);
+            if (columnInfo?.column) {
+              // Set column width through DOM for immediate visual feedback
+              try {
+                const headerCell = document.querySelector(
+                  `.k-grid-header th[data-field="${field}"]`
+                ) as HTMLElement;
+                if (headerCell) {
+                  // Apply through both column object and DOM for full effect
+                  columnInfo.column.width = `${width}px`;
+                  headerCell.style.width = `${width}px`;
+                }
+              } catch (widthError) {
+                console.warn(
+                  `Could not set width for column ${field}:`,
+                  widthError
+                );
+              }
+            }
+          });
+
+          // Force refresh after width adjustments
+          this.cdr.detectChanges();
+        }, 100);
+      }
+
+      // Step 4: Apply column visibility if available
+      if (
+        preference.columnVisibility &&
+        Object.keys(preference.columnVisibility).length > 0
+      ) {
+        // Handle column visibility in a future implementation
+        // This would require removing and re-adding columns to the grid
+        console.log(
+          'Column visibility will be applied in a future implementation'
+        );
+      }
+
+      // Force grid refresh
+      this.loadItems();
+
+      // Final force change detection
+      setTimeout(() => {
+        this.cdr.detectChanges();
+      }, 200);
+    } catch (error) {
+      console.error('Error applying complete grid configuration:', error);
+      // Fall back to basic column reordering if the enhanced version fails
+      this.reorderGridColumns();
+    }
+  }
+
   // Debug function to check current column order
   public debugColumnOrder(): void {
     console.log('=== COLUMN ORDER DEBUG ===');
@@ -701,5 +905,115 @@ export class LeadMgtComponent implements OnInit, OnDestroy {
     // Refresh grid
     this.loadItems();
     this.state.skip = 0;
+  }
+
+  // Enhanced method to capture complete grid configuration when saving preferences
+  private captureGridConfiguration(): {
+    columns: string[];
+    columnWidths: { [key: string]: number };
+    columnVisibility: { [key: string]: boolean };
+    columnOrderIndex: { [key: string]: number };
+  } {
+    // Default empty configuration
+    const config = {
+      columns: [...this.defaultColumnOrder],
+      columnWidths: {} as { [key: string]: number },
+      columnVisibility: {} as { [key: string]: boolean },
+      columnOrderIndex: {} as { [key: string]: number }, // Add order index tracking
+    };
+
+    if (!this.grid) return config;
+
+    try {
+      // METHOD 1: Get order directly from DOM (most accurate)
+      const headerCells = document.querySelectorAll(
+        '.k-grid-header th[data-field]'
+      );
+
+      if (headerCells && headerCells.length > 0) {
+        // Extract field names and widths from the DOM in their current visual order
+        const domOrder: string[] = [];
+        const widths: { [key: string]: number } = {};
+        const visibility: { [key: string]: boolean } = {};
+        const orderIndex: { [key: string]: number } = {}; // Track order index of each column
+
+        headerCells.forEach((header: Element, index: number) => {
+          const field = header.getAttribute('data-field');
+          if (field) {
+            domOrder.push(field);
+            // Capture width by getting offsetWidth of the cell
+            widths[field] = (header as HTMLElement).offsetWidth;
+            visibility[field] = true; // Visible since we found it in DOM
+            orderIndex[field] = index; // Store the actual visual index
+          }
+        });
+
+        if (domOrder.length > 0) {
+          console.log('DOM-based column order captured:', domOrder);
+          console.log('Column widths captured:', widths);
+          console.log('Column order indexes captured:', orderIndex);
+
+          config.columns = [...domOrder];
+          config.columnWidths = { ...widths };
+          config.columnVisibility = { ...visibility };
+          config.columnOrderIndex = { ...orderIndex };
+
+          // Also check for any columns in default that aren't visible
+          this.defaultColumnOrder.forEach((field) => {
+            if (!domOrder.includes(field)) {
+              visibility[field] = false; // Mark as not visible
+            }
+          });
+
+          return config;
+        }
+      }
+
+      // METHOD 2: Fallback to using the Grid component's columns
+      console.warn(
+        'DOM-based detection failed, falling back to component-based detection'
+      );
+      const allColumns = this.grid.columns.toArray();
+      const componentOrder = allColumns
+        .filter((col) => col.field)
+        .map((col) => col.field || '');
+
+      if (componentOrder.length > 0) {
+        config.columns = [...componentOrder];
+
+        // Try to get widths and build order indexes from column components
+        allColumns.forEach((col, index) => {
+          if (col.field && col.field !== '') {
+            // Store the order index
+            config.columnOrderIndex[col.field] = componentOrder.indexOf(
+              col.field
+            );
+
+            // Handle column width
+            if (col.width !== undefined) {
+              // Handle different types of width values properly
+              if (typeof col.width === 'string') {
+                // Remove 'px' if present and convert to number
+                const widthStr = col.width as string;
+                config.columnWidths[col.field] =
+                  parseInt(widthStr.replace('px', ''), 10) || 100;
+              } else if (typeof col.width === 'number') {
+                // If it's already a number, use it directly
+                config.columnWidths[col.field] = col.width as number;
+              } else {
+                // Default value for other types
+                config.columnWidths[col.field] = 100;
+              }
+            }
+            config.columnVisibility[col.field] = true;
+          }
+        });
+      }
+
+      return config;
+    } catch (error) {
+      console.error('Error capturing grid configuration:', error);
+      return config;
+    }
   }
 }
